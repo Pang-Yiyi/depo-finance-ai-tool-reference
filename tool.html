@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>帝寶財會 AI 工具</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f0f4f8;--surface:#fff;--border:#e2e8f0;--text:#1e293b;--text2:#64748b;
+  --blue:#2563eb;--blue-l:#dbeafe;--green:#16a34a;--green-l:#dcfce7;
+  --red:#dc2626;--red-l:#fee2e2;--orange:#ea580c;--orange-l:#ffedd5;
+  --purple:#7c3aed;--purple-l:#ede9fe;--shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:56px}
+.brand{font-weight:800;font-size:15px;display:flex;align-items:center;gap:10px}
+.brand .dot{width:8px;height:8px;background:var(--blue);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.nav-tabs{display:flex;gap:4px}
+.tab-btn{padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;border:none;
+  background:none;color:var(--text2);cursor:pointer;transition:.15s}
+.tab-btn:hover,.tab-btn.active{background:var(--blue-l);color:var(--blue)}
+.tab-btn:disabled{opacity:.4;cursor:not-allowed}
+.badge{background:var(--blue);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+
+/* LAYOUT */
+.container{max-width:1240px;margin:0 auto;padding:28px 24px}
+
+/* UPLOAD PANEL */
+.upload-panel{background:var(--surface);border-radius:var(--r);padding:32px;box-shadow:var(--shadow);margin-bottom:24px}
+.upload-title{font-size:18px;font-weight:800;margin-bottom:6px}
+.upload-sub{font-size:13px;color:var(--text2);margin-bottom:24px}
+.upload-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.upload-slot{border:2px dashed var(--border);border-radius:var(--r);padding:20px 14px;text-align:center;cursor:pointer;transition:.2s;position:relative}
+.upload-slot:hover,.upload-slot.over{border-color:var(--blue);background:var(--blue-l)}
+.upload-slot.loaded{border-color:var(--green);background:var(--green-l);border-style:solid}
+.slot-icon{font-size:28px;margin-bottom:8px}
+.slot-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px}
+.slot-hint{font-size:11px;color:var(--text2)}
+.slot-file{font-size:11px;color:var(--green);font-weight:600;margin-top:6px;word-break:break-all}
+.file-input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+.analyze-row{display:flex;align-items:center;gap:16px;margin-top:22px}
+.btn-analyze{background:var(--blue);color:#fff;border:none;padding:12px 32px;border-radius:10px;
+  font-size:15px;font-weight:700;cursor:pointer;transition:.15s;flex-shrink:0}
+.btn-analyze:hover{background:#1d4ed8}
+.btn-analyze:disabled{background:#94a3b8;cursor:not-allowed}
+.progress-msg{font-size:13px;color:var(--text2)}
+
+/* PAGES */
+.page{display:none}
+.page.active{display:block}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{background:var(--surface);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.blue::after{background:var(--blue)} .kpi.green::after{background:var(--green)}
+.kpi.orange::after{background:var(--orange)} .kpi.red::after{background:var(--red)}
+.kpi.purple::after{background:var(--purple)}
+.kpi-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.kpi-val{font-size:26px;font-weight:800;margin:6px 0 2px}
+.kpi-unit{font-size:11px;color:var(--text2)}
+.kpi-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;margin-top:6px}
+.kpi-badge.ok{background:var(--green-l);color:var(--green)}
+.kpi-badge.warn{background:var(--orange-l);color:var(--orange)}
+.kpi-badge.bad{background:var(--red-l);color:var(--red)}
+.kpi-badge.info{background:var(--blue-l);color:var(--blue)}
+
+/* CARDS */
+.card{background:var(--surface);border-radius:var(--r);padding:22px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:20px}
+.card-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.card-sub{font-size:12px;color:var(--text2);margin-bottom:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+.chart-wrap{position:relative}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:#f8fafc}
+th,td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left}
+th{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.risk-tag{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700}
+.risk-tag.high{background:var(--red-l);color:var(--red)}
+.risk-tag.mid{background:var(--orange-l);color:var(--orange)}
+.risk-tag.low{background:var(--blue-l);color:var(--blue)}
+.risk-tag.ok{background:var(--green-l);color:var(--green)}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.toolbar-left{font-size:14px;font-weight:700}
+.btn-export{background:var(--green);color:#fff;border:none;padding:7px 18px;border-radius:8px;
+  font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
+.btn-export:hover{background:#15803d}
+
+/* SUMMARY */
+.summary-box{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;border-radius:var(--r);padding:28px}
+.summary-box h3{font-size:16px;font-weight:800;margin-bottom:20px;color:#fff}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.summary-block{background:rgba(255,255,255,.08);border-radius:10px;padding:16px}
+.summary-block h4{font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.6px;margin-bottom:10px}
+.summary-block p{font-size:13px;line-height:1.8;color:rgba(255,255,255,.85)}
+.summary-recs{background:rgba(255,255,255,.05);border-radius:10px;padding:16px}
+.summary-recs h4{font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.6px;margin-bottom:10px}
+.summary-recs ol{padding-left:18px;font-size:13px;line-height:2;color:rgba(255,255,255,.82)}
+.btn-copy{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2);
+  padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.btn-copy:hover{background:rgba(255,255,255,.25)}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty .icon{font-size:48px;margin-bottom:12px}
+
+/* QUERY BOX */
+.query-bar{display:flex;gap:10px;margin-bottom:20px}
+.query-input{flex:1;padding:10px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;outline:none;transition:.15s}
+.query-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.btn-query{background:var(--blue);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+.query-result{background:var(--blue-l);border-radius:var(--r);padding:16px;font-size:14px;line-height:1.7;min-height:48px;border:1px solid #bfdbfe}
+
+/* STATUS */
+.section-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.section-title{font-size:18px;font-weight:800}
+.section-sub{font-size:13px;color:var(--text2)}
+
+.conf-badge{padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600}
+.conf-badge.high{background:var(--green-l);color:var(--green)}
+.conf-badge.medium{background:var(--orange-l);color:var(--orange)}
+.conf-badge.low{background:var(--red-l);color:var(--red)}
+
+/* SIMULATOR */
+.sim-panel{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;border-radius:var(--r);padding:28px;box-shadow:var(--shadow);margin-bottom:22px}
+.sim-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:24px}
+.sim-title{font-size:19px;font-weight:900}
+.sim-sub{font-size:13px;color:rgba(255,255,255,.65);margin-top:4px}
+.sim-reset{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+.sim-layout{display:grid;grid-template-columns:.92fr 1.08fr;gap:24px}
+.sim-controls{display:flex;flex-direction:column;gap:18px}
+.sim-slider-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sim-slider-name{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:rgba(255,255,255,.92)}
+.sim-slider-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.sim-slider-val{font-size:19px;font-weight:900;min-width:58px;text-align:right}
+.sim-slider-val.pos{color:#f87171}.sim-slider-val.neg{color:#4ade80}
+.sim-range{width:100%;height:6px;appearance:none;border-radius:3px;background:rgba(255,255,255,.16);outline:none}
+.sim-range::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:pointer}
+.sim-scale{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.45);margin-top:4px}
+.sim-result-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}
+.sim-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:14px 16px}
+.sim-card-label{font-size:11px;color:rgba(255,255,255,.55);font-weight:800;letter-spacing:.4px;text-transform:uppercase}
+.sim-card-base{font-size:12px;color:rgba(255,255,255,.48);margin-top:2px}
+.sim-card-val{font-size:24px;font-weight:900;margin-top:6px}
+.sim-card-delta{display:inline-block;font-size:12px;font-weight:800;border-radius:999px;padding:2px 8px;margin-top:6px}
+.sim-card-delta.good{background:rgba(74,222,128,.18);color:#86efac}
+.sim-card-delta.bad{background:rgba(248,113,113,.18);color:#fca5a5}
+.sim-card-delta.zero{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7)}
+.sim-total{background:rgba(37,99,235,.25);border:1px solid rgba(37,99,235,.45);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.sim-total-row{display:flex;justify-content:space-between;align-items:center}
+.sim-total-label{font-size:13px;font-weight:800}.sim-total-val{font-size:25px;font-weight:950}
+.sim-risk{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px}
+.sim-risk-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.sim-risk-title{font-size:13px;font-weight:900}
+.sim-risk-level{font-size:12px;font-weight:900;border-radius:999px;padding:3px 10px}
+.sim-risk-level.ok{background:rgba(74,222,128,.18);color:#86efac}
+.sim-risk-level.mid{background:rgba(251,191,36,.18);color:#facc15}
+.sim-risk-level.high{background:rgba(248,113,113,.18);color:#fca5a5}
+.sim-risk-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.sim-risk-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px}
+.sim-risk-label{font-size:11px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase}
+.sim-risk-val{font-size:20px;font-weight:900;margin-top:3px}
+.sim-risk-note{font-size:12px;color:rgba(255,255,255,.66);line-height:1.45;margin-top:3px}
+.sim-actions{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;line-height:1.65;color:rgba(255,255,255,.78)}
+@media(max-width:900px){.sim-layout{grid-template-columns:1fr}.sim-risk-grid,.sim-result-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand"><div class="dot"></div>帝寶財會 AI 工具</div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="showTab('upload')">上傳資料</button>
+    <button class="tab-btn" id="btn-finance" onclick="showTab('finance')" disabled>財務分析</button>
+    <button class="tab-btn" id="btn-profit"  onclick="showTab('profit')"  disabled>毛利分析</button>
+    <button class="tab-btn" id="btn-work"    onclick="showTab('work')"    disabled>報工風險</button>
+    <button class="tab-btn" id="btn-audit"   onclick="showTab('audit')"   disabled>費用稽核</button>
+    <button class="tab-btn" id="btn-sim"     onclick="showTab('sim')"     disabled>情境模擬</button>
+    <button class="tab-btn" id="btn-summary" onclick="showTab('summary')" disabled>AI 摘要</button>
+  </div>
+  <div class="badge" id="status-badge">尚未分析</div>
+</nav>
+
+<div class="container">
+
+  <!-- ══ PAGE: UPLOAD ══ -->
+  <div class="page active" id="page-upload">
+    <div class="upload-panel">
+      <div class="upload-title">上傳財會資料 — 選擇你要分析的檔案</div>
+      <div class="upload-sub">支援 .xlsx / .xls / .jsonl / .csv · 可只上傳部分檔案，工具會依可用資料啟用對應分析模組</div>
+      <div class="upload-grid">
+        <div class="upload-slot" id="slot-finance" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'finance')">
+          <input type="file" class="file-input" accept=".xlsx,.xls" onchange="onFileSelect(event,'finance')">
+          <div class="slot-icon">📊</div>
+          <div class="slot-name">財務比率</div>
+          <div class="slot-hint">.xlsx · 財務比率(合併)</div>
+          <div class="slot-file" id="file-finance"></div>
+        </div>
+        <div class="upload-slot" id="slot-profit" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'profit')">
+          <input type="file" class="file-input" accept=".xlsx,.xls" onchange="onFileSelect(event,'profit')">
+          <div class="slot-icon">💰</div>
+          <div class="slot-name">銷貨毛利</div>
+          <div class="slot-hint">.xlsx · 銷貨毛利原始檔</div>
+          <div class="slot-file" id="file-profit"></div>
+        </div>
+        <div class="upload-slot" id="slot-work" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'work')">
+          <input type="file" class="file-input" accept=".xlsx,.xls" onchange="onFileSelect(event,'work')">
+          <div class="slot-icon">🏭</div>
+          <div class="slot-name">加工報工</div>
+          <div class="slot-hint">.xlsx · 加工報工資料</div>
+          <div class="slot-file" id="file-work"></div>
+        </div>
+        <div class="upload-slot" id="slot-audit" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'audit')">
+          <input type="file" class="file-input" accept=".jsonl,.csv" onchange="onFileSelect(event,'audit')">
+          <div class="slot-icon">📋</div>
+          <div class="slot-name">費用憑證</div>
+          <div class="slot-hint">.jsonl · 驗證後憑證資料</div>
+          <div class="slot-file" id="file-audit"></div>
+        </div>
+      </div>
+      <div class="analyze-row">
+        <button class="btn-analyze" id="btn-analyze" onclick="runAnalysis()" disabled>開始分析</button>
+        <div class="progress-msg" id="progress-msg">請至少上傳一個檔案</div>
+      </div>
+    </div>
+
+    <!-- Quick demo section -->
+    <div class="card" style="border:2px dashed var(--border);">
+      <div class="card-title">或使用內建示範資料</div>
+      <div class="card-sub">載入帝寶 115Q1 示範資料集，立即體驗所有功能</div>
+      <button onclick="loadDemoData()" style="background:var(--purple);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;">載入示範資料並分析</button>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: FINANCE ══ -->
+  <div class="page" id="page-finance">
+    <div class="section-header">
+      <div>
+        <div class="section-title">財務 KPI 分析</div>
+        <div class="section-sub" id="finance-source">資料來源：財務比率 Excel</div>
+      </div>
+    </div>
+    <div class="kpi-grid" id="finance-kpi"></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">財務比率一覽</div>
+        <div class="card-sub">自動解析 Excel 財務比率欄位</div>
+        <table><thead><tr><th>指標</th><th class="num">數值</th><th>解讀</th></tr></thead>
+        <tbody id="finance-table"></tbody></table>
+      </div>
+      <div class="card">
+        <div class="card-title">獲利能力趨勢</div>
+        <div class="card-sub">毛利率 / 純益率</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="finance-chart"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">風險指標查詢</div>
+      <div class="card-sub">輸入問題，AI 根據已解析的財務資料回答</div>
+      <div class="query-bar">
+        <input class="query-input" id="finance-query" placeholder="例：速動比率偏低嗎？應收款項有風險嗎？" onkeydown="if(e.key==='Enter')queryFinance()">
+        <button class="btn-query" onclick="queryFinance()">查詢</button>
+      </div>
+      <div class="query-result" id="finance-answer">輸入問題後，系統會根據財務比率資料回答。</div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: PROFIT ══ -->
+  <div class="page" id="page-profit">
+    <div class="section-header">
+      <div>
+        <div class="section-title">產品別毛利分析</div>
+        <div class="section-sub" id="profit-source">資料來源：銷貨毛利 Excel</div>
+      </div>
+      <button class="btn-export" onclick="exportCSV('profit')">⬇ 匯出毛利清單 CSV</button>
+    </div>
+    <div class="kpi-grid" id="profit-kpi"></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">品類毛利率排行</div>
+        <div class="card-sub">由高到低排列，紅色 = 負毛利，橘色 = 低毛利（&lt;10%）</div>
+        <div class="chart-wrap" style="height:300px"><canvas id="profit-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">銷貨淨額 vs 毛利</div>
+        <div class="card-sub">各品類規模與獲利對比</div>
+        <div class="chart-wrap" style="height:300px"><canvas id="profit-bubble"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="toolbar">
+        <div class="toolbar-left">品類毛利明細 <span id="profit-count" style="font-size:12px;font-weight:400;color:var(--text2)"></span></div>
+      </div>
+      <table><thead><tr><th>#</th><th>品類</th><th class="num">銷貨淨額</th><th class="num">銷貨成本</th><th class="num">毛利</th><th class="num">毛利率</th><th>風險等級</th><th>建議</th></tr></thead>
+      <tbody id="profit-table"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: WORK ══ -->
+  <div class="page" id="page-work">
+    <div class="section-header">
+      <div>
+        <div class="section-title">報工風險偵測</div>
+        <div class="section-sub" id="work-source">資料來源：加工報工 Excel</div>
+      </div>
+      <button class="btn-export" onclick="exportCSV('work')">⬇ 匯出高風險工單 CSV</button>
+    </div>
+    <div class="kpi-grid" id="work-kpi"></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">每日良品 vs 報廢趨勢</div>
+        <div class="card-sub">良品數（藍）/ 報廢數 × 10（橘）</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="work-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">每日報廢率趨勢</div>
+        <div class="card-sub">紅色虛線 = 1% 高風險警戒線</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="scrap-chart"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="toolbar">
+        <div class="toolbar-left">每日報工詳情 <span id="work-count" style="font-size:12px;font-weight:400;color:var(--text2)"></span></div>
+      </div>
+      <table><thead><tr><th>日期</th><th class="num">良品數</th><th class="num">報廢數</th><th class="num">工單數</th><th class="num">報廢率</th><th>風險等級</th><th>說明</th></tr></thead>
+      <tbody id="work-table"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: AUDIT ══ -->
+  <div class="page" id="page-audit">
+    <div class="section-header">
+      <div>
+        <div class="section-title">費用與憑證稽核</div>
+        <div class="section-sub" id="audit-source">資料來源：invoice_auto 結構化憑證 (.jsonl)</div>
+      </div>
+      <button class="btn-export" onclick="exportCSV('audit')">⬇ 匯出稽核風險清單 CSV</button>
+    </div>
+    <div class="kpi-grid" id="audit-kpi"></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">月份費用支出趨勢</div>
+        <div class="card-sub">依 transaction_date 彙總</div>
+        <div class="chart-wrap" style="height:250px"><canvas id="audit-month-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">憑證類型金額分布</div>
+        <div class="card-sub">依 document_type 彙總</div>
+        <div class="chart-wrap" style="height:250px"><canvas id="audit-type-chart"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="toolbar">
+        <div class="toolbar-left">稽核風險清單 <span id="audit-risk-count" style="font-size:12px;font-weight:400;color:var(--text2)"></span></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label style="font-size:12px;color:var(--text2)">篩選：</label>
+          <select id="audit-filter" onchange="renderAuditTable()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;">
+            <option value="all">全部</option>
+            <option value="高">高風險</option>
+            <option value="中">中風險</option>
+            <option value="低">低風險</option>
+          </select>
+        </div>
+      </div>
+      <table><thead><tr><th>憑證ID</th><th>交易日期</th><th>類型</th><th>品項</th><th class="num">金額</th><th>信心度</th><th>風險原因</th><th>風險等級</th></tr></thead>
+      <tbody id="audit-table"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: SIMULATOR ══ -->
+  <div class="page" id="page-sim">
+    <div class="section-header">
+      <div>
+        <div class="section-title">AI 情境模擬與預估風險</div>
+        <div class="section-sub">整合財務、毛利、報工與費用稽核資料，調整關鍵變數後即時預估損益與風險</div>
+      </div>
+    </div>
+
+    <div class="sim-panel">
+      <div class="sim-head">
+        <div>
+          <div class="sim-title">Scenario Simulator · 風險與預期值模擬</div>
+          <div class="sim-sub" id="sim-base-note">基準會依已分析資料自動帶入；未上傳完整資料時使用 115Q1 示範基準。</div>
+        </div>
+        <button class="sim-reset" onclick="resetToolSim()">↺ 重設預設值</button>
+      </div>
+
+      <div class="sim-layout">
+        <div class="sim-controls">
+          <div>
+            <div class="sim-slider-label">
+              <div class="sim-slider-name"><div class="sim-slider-icon" style="background:rgba(248,113,113,.2)">👷</div>人工成本變動</div>
+              <div class="sim-slider-val" id="tool-lbl-labor">+10%</div>
+            </div>
+            <input class="sim-range" type="range" id="tool-slider-labor" min="-20" max="30" value="10" step="1" oninput="updateToolSim()">
+            <div class="sim-scale"><span>-20%</span><span>0</span><span>+30%</span></div>
+          </div>
+          <div>
+            <div class="sim-slider-label">
+              <div class="sim-slider-name"><div class="sim-slider-icon" style="background:rgba(251,191,36,.2)">🏭</div>原料成本變動</div>
+              <div class="sim-slider-val" id="tool-lbl-material">+15%</div>
+            </div>
+            <input class="sim-range" type="range" id="tool-slider-material" min="-20" max="30" value="15" step="1" oninput="updateToolSim()">
+            <div class="sim-scale"><span>-20%</span><span>0</span><span>+30%</span></div>
+          </div>
+          <div>
+            <div class="sim-slider-label">
+              <div class="sim-slider-name"><div class="sim-slider-icon" style="background:rgba(52,211,153,.2)">📦</div>銷量 / 產量變動</div>
+              <div class="sim-slider-val" id="tool-lbl-volume">-5%</div>
+            </div>
+            <input class="sim-range" type="range" id="tool-slider-volume" min="-20" max="20" value="-5" step="1" oninput="updateToolSim()">
+            <div class="sim-scale"><span>-20%</span><span>0</span><span>+20%</span></div>
+          </div>
+          <div>
+            <div class="sim-slider-label">
+              <div class="sim-slider-name"><div class="sim-slider-icon" style="background:rgba(248,113,113,.2)">⚠️</div>報廢率變動</div>
+              <div class="sim-slider-val" id="tool-lbl-scrap">+20%</div>
+            </div>
+            <input class="sim-range" type="range" id="tool-slider-scrap" min="-50" max="100" value="20" step="5" oninput="updateToolSim()">
+            <div class="sim-scale"><span>-50%</span><span>0</span><span>+100%</span></div>
+          </div>
+          <div>
+            <div class="sim-slider-label">
+              <div class="sim-slider-name"><div class="sim-slider-icon" style="background:rgba(167,139,250,.2)">🧾</div>稽核壓力變動</div>
+              <div class="sim-slider-val" id="tool-lbl-audit">+15%</div>
+            </div>
+            <input class="sim-range" type="range" id="tool-slider-audit" min="-30" max="80" value="15" step="5" oninput="updateToolSim()">
+            <div class="sim-scale"><span>-30%</span><span>0</span><span>+80%</span></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="sim-result-grid">
+            <div class="sim-card">
+              <div class="sim-card-label">預估銷貨淨額（萬元）</div>
+              <div class="sim-card-base" id="tool-b-revenue">基準: —</div>
+              <div class="sim-card-val" id="tool-a-revenue">—</div>
+              <div class="sim-card-delta" id="tool-d-revenue"></div>
+            </div>
+            <div class="sim-card">
+              <div class="sim-card-label">預估毛利率</div>
+              <div class="sim-card-base" id="tool-b-gm">基準: —</div>
+              <div class="sim-card-val" id="tool-a-gm">—</div>
+              <div class="sim-card-delta" id="tool-d-gm"></div>
+            </div>
+            <div class="sim-card">
+              <div class="sim-card-label">預估毛利（萬元）</div>
+              <div class="sim-card-base" id="tool-b-gross">基準: —</div>
+              <div class="sim-card-val" id="tool-a-gross">—</div>
+              <div class="sim-card-delta" id="tool-d-gross"></div>
+            </div>
+            <div class="sim-card">
+              <div class="sim-card-label">預估營業利益（萬元）</div>
+              <div class="sim-card-base" id="tool-b-op">基準: —</div>
+              <div class="sim-card-val" id="tool-a-op">—</div>
+              <div class="sim-card-delta" id="tool-d-op"></div>
+            </div>
+          </div>
+
+          <div class="sim-total">
+            <div class="sim-total-row">
+              <div class="sim-total-label">預估稅後淨利（萬元）</div>
+              <div class="sim-total-val" id="tool-a-net">—</div>
+            </div>
+            <div class="sim-card-delta" id="tool-d-net"></div>
+          </div>
+
+          <div class="sim-risk">
+            <div class="sim-risk-head">
+              <div class="sim-risk-title">AI 預估風險</div>
+              <div class="sim-risk-level" id="tool-risk-level">—</div>
+            </div>
+            <div class="sim-risk-grid">
+              <div class="sim-risk-card">
+                <div class="sim-risk-label">毛利風險</div>
+                <div class="sim-risk-val" id="tool-risk-margin">—</div>
+                <div class="sim-risk-note" id="tool-risk-margin-note">依毛利率與負毛利品類判斷</div>
+              </div>
+              <div class="sim-risk-card">
+                <div class="sim-risk-label">預估報廢率</div>
+                <div class="sim-risk-val" id="tool-risk-scrap">—</div>
+                <div class="sim-risk-note" id="tool-risk-scrap-note">依報工資料與調整量估算</div>
+              </div>
+              <div class="sim-risk-card">
+                <div class="sim-risk-label">稽核高風險筆數</div>
+                <div class="sim-risk-val" id="tool-risk-audit">—</div>
+                <div class="sim-risk-note" id="tool-risk-audit-note">依費用壓力估算</div>
+              </div>
+              <div class="sim-risk-card">
+                <div class="sim-risk-label">流動性提醒</div>
+                <div class="sim-risk-val" id="tool-risk-finance">—</div>
+                <div class="sim-risk-note" id="tool-risk-finance-note">依速動比率與收現日數判斷</div>
+              </div>
+            </div>
+            <div class="sim-actions" id="tool-sim-actions">調整滑桿後，系統會同步產生管理建議。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: SUMMARY ══ -->
+  <div class="page" id="page-summary">
+    <div class="section-header">
+      <div>
+        <div class="section-title">AI 管理摘要生成</div>
+        <div class="section-sub">整合所有已分析模組，自動生成董事會報告草稿</div>
+      </div>
+      <button class="btn-copy" id="copy-btn" onclick="copySummary()" style="background:var(--blue);border-color:var(--blue)">📋 複製摘要文字</button>
+    </div>
+    <div class="summary-box" id="summary-box">
+      <h3 id="summary-title">帝寶財會 AI 決策平台 — 管理摘要</h3>
+      <div class="summary-grid" id="summary-grid"></div>
+      <div class="summary-recs" id="summary-recs"></div>
+    </div>
+    <div style="margin-top:20px;" class="card">
+      <div class="card-title">法說會重點草稿</div>
+      <div class="card-sub">依上傳資料自動生成，請財會主管確認後使用</div>
+      <div id="ir-draft" style="font-size:14px;line-height:2;color:var(--text);white-space:pre-line;padding:8px 0;"></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+const STATE = {
+  files: {finance:null, profit:null, work:null, audit:null},
+  data:  {finance:null, profit:null, work:null, audit:null},
+  auditRisks: [],
+  workRisks: [],
+  profitRows: [],
+};
+let charts = {};
+
+const SIM_DEFAULT = {
+  revenue: 4732845,
+  grossMargin: 0.335,
+  netMargin: 0.155,
+  sgaRatio: 719696 / 4732845,
+  taxRate: 0.2289,
+  materialRatio: 0.65,
+  laborRatio: 0.25,
+  variableCostRatio: 0.90,
+  quickRatio: 0.70,
+  receivableDays: 75.7,
+  scrapRate: 0.0072,
+  highAudit: 2,
+  negativeCats: 1,
+  lowMarginCats: 3,
+};
+
+function canUseCharts(){
+  return typeof Chart !== 'undefined';
+}
+
+// ══════════════════════════════════════════
+// TAB NAVIGATION
+// ══════════════════════════════════════════
+function showTab(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// FILE UPLOAD
+// ══════════════════════════════════════════
+function onDragOver(e){e.preventDefault();e.currentTarget.classList.add('over')}
+function onDragLeave(e){e.currentTarget.classList.remove('over')}
+function onDrop(e,slot){e.preventDefault();e.currentTarget.classList.remove('over');const f=e.dataTransfer.files[0];if(f)setFile(slot,f)}
+function onFileSelect(e,slot){const f=e.target.files[0];if(f)setFile(slot,f)}
+
+function setFile(slot,file){
+  STATE.files[slot]=file;
+  const sl=document.getElementById('slot-'+slot);
+  sl.classList.add('loaded');
+  document.getElementById('file-'+slot).textContent=file.name;
+  checkReady();
+}
+
+function checkReady(){
+  const any=Object.values(STATE.files).some(f=>f!=null);
+  document.getElementById('btn-analyze').disabled=!any;
+  document.getElementById('progress-msg').textContent=any?'點擊「開始分析」處理資料':'請至少上傳一個檔案';
+}
+
+// ══════════════════════════════════════════
+// ANALYSIS RUNNER
+// ══════════════════════════════════════════
+async function runAnalysis(){
+  document.getElementById('btn-analyze').disabled=true;
+  document.getElementById('progress-msg').textContent='解析中…';
+  document.getElementById('status-badge').textContent='分析中';
+
+  try{
+    if(STATE.files.finance) await parseFinanceExcel(STATE.files.finance);
+    if(STATE.files.profit)  await parseProfitExcel(STATE.files.profit);
+    if(STATE.files.work)    await parseWorkExcel(STATE.files.work);
+    if(STATE.files.audit)   await parseAuditJSONL(STATE.files.audit);
+
+    renderAll();
+    document.getElementById('progress-msg').textContent='分析完成';
+    document.getElementById('status-badge').textContent='已分析';
+  }catch(err){
+    document.getElementById('progress-msg').textContent='錯誤：'+err.message;
+    console.error(err);
+  }
+  document.getElementById('btn-analyze').disabled=false;
+}
+
+// ══════════════════════════════════════════
+// EXCEL PARSERS
+// ══════════════════════════════════════════
+function readFileBuffer(file){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onload=e=>res(e.target.result);
+    fr.onerror=rej;
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+async function parseFinanceExcel(file){
+  const buf=await readFileBuffer(file);
+  const wb=XLSX.read(buf,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+
+  // Heuristic: find rows with ratio labels + numeric values
+  const ratios=[];
+  const numericCols=[];
+  rows.forEach(row=>{
+    const label=String(row[0]||'').trim();
+    if(!label) return;
+    // find first numeric value in row
+    for(let c=1;c<row.length;c++){
+      const v=parseFloat(String(row[c]).replace(/[%,]/g,''));
+      if(!isNaN(v) && v!==0){
+        ratios.push({label, value:row[c], col:c});
+        break;
+      }
+    }
+  });
+
+  // Try to find key metrics by keyword matching
+  const KW={
+    revenue:['銷貨淨額','淨收益','營業收入'],
+    grossProfit:['毛利','銷貨毛利'],
+    grossMargin:['毛利率'],
+    netIncome:['稅後淨利','本期淨利'],
+    netMargin:['純益率','稅後純益率'],
+    currentRatio:['流動比率'],
+    quickRatio:['速動比率'],
+    debtRatio:['負債占資產','負債比率','負債比'],
+    roa:['資產報酬率','ROA'],
+    roe:['股東權益報酬率','ROE'],
+    interestCoverage:['利息保障'],
+    receivableDays:['收現日數','應收帳款天數'],
+    inventoryTurn:['存貨週轉率'],
+  };
+
+  const found={};
+  ratios.forEach(r=>{
+    Object.entries(KW).forEach(([key,keywords])=>{
+      if(!found[key] && keywords.some(kw=>r.label.includes(kw))){
+        const raw=String(r.value).replace(/[,%]/g,'');
+        found[key]=parseFloat(raw)||r.value;
+      }
+    });
+  });
+
+  STATE.data.finance={ratios, found, fileName:file.name};
+  document.getElementById('btn-finance').disabled=false;
+}
+
+async function parseProfitExcel(file){
+  const buf=await readFileBuffer(file);
+  const wb=XLSX.read(buf,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+
+  const cats=[];
+  // Look for rows with product category + revenue/cost/GP pattern
+  rows.forEach(row=>{
+    const label=String(row[0]||'').trim();
+    if(!label||label.length>10) return;
+    const nums=[];
+    for(let c=1;c<row.length;c++){
+      const v=parseFloat(String(row[c]).replace(/[,]/g,''));
+      if(!isNaN(v)) nums.push(v);
+    }
+    if(nums.length>=3){
+      const [rev,cost,gp]=nums;
+      if(rev>0){
+        cats.push({name:label, revenue:rev, cost:cost||rev-gp, gp:gp||rev-cost});
+      }
+    }
+  });
+
+  // Fallback: try to find header row with 銷貨/成本/毛利 keywords
+  let headerRow=-1;
+  rows.forEach((row,i)=>{
+    const txt=row.join(' ');
+    if(txt.includes('銷貨') && txt.includes('成本') && headerRow===-1) headerRow=i;
+  });
+
+  const parsed=cats.length>=3?cats:parseProfitHeuristic(rows);
+  parsed.sort((a,b)=>b.gp-a.gp);
+  STATE.data.profit={cats:parsed, fileName:file.name};
+  STATE.profitRows=parsed;
+  document.getElementById('btn-profit').disabled=false;
+}
+
+function parseProfitHeuristic(rows){
+  const results=[];
+  // Try columns: col0=name, col1=revenue, col2=cost, col3=gp or col4
+  for(const row of rows){
+    const name=String(row[0]||'').trim();
+    if(!name||name.length<1||name.length>10) continue;
+    const r1=parseFloat(String(row[1]||'').replace(/,/g,''));
+    const r2=parseFloat(String(row[2]||'').replace(/,/g,''));
+    const r3=parseFloat(String(row[3]||'').replace(/,/g,''));
+    if(isNaN(r1)||r1<=0) continue;
+    results.push({name, revenue:r1, cost:r2||0, gp:r3||r1-r2});
+  }
+  return results;
+}
+
+async function parseWorkExcel(file){
+  const buf=await readFileBuffer(file);
+  const wb=XLSX.read(buf,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+
+  const days=[];
+  // Find header: date, good, scrap, orders
+  let dateCol=0,goodCol=1,scrapCol=2,ordersCol=3;
+  rows.forEach((row,i)=>{
+    const txt=row.map(c=>String(c).toLowerCase()).join('');
+    if(txt.includes('良品')||txt.includes('good')){
+      row.forEach((h,ci)=>{
+        const s=String(h);
+        if(s.includes('良品')||s.toLowerCase().includes('good')) goodCol=ci;
+        if(s.includes('報廢')||s.includes('廢品')||s.toLowerCase().includes('scrap')) scrapCol=ci;
+        if(s.includes('工單')||s.toLowerCase().includes('order')) ordersCol=ci;
+        if(ci===0) dateCol=0;
+      });
+    }
+  });
+
+  rows.forEach(row=>{
+    const dateRaw=row[dateCol];
+    const good=parseFloat(String(row[goodCol]).replace(/,/g,''));
+    const scrap=parseFloat(String(row[scrapCol]).replace(/,/g,''));
+    if(isNaN(good)||good<=0) return;
+    const orders=parseFloat(String(row[ordersCol]).replace(/,/g,''))||0;
+    days.push({date:formatDate(dateRaw), good, scrap:scrap||0, orders});
+  });
+
+  STATE.data.work={days, fileName:file.name};
+  STATE.workRisks=days.filter(d=>d.scrap/(d.good+d.scrap)>0.008);
+  document.getElementById('btn-work').disabled=false;
+}
+
+function formatDate(v){
+  if(!v) return '';
+  if(typeof v==='number'){
+    const d=XLSX.SSF.parse_date_code(v);
+    return `${d.m}/${d.d}`;
+  }
+  return String(v).replace(/^\d+\//,'');
+}
+
+async function parseAuditJSONL(file){
+  const txt=await file.text();
+  const lines=txt.trim().split('\n').filter(l=>l.trim());
+  const records=lines.map(l=>{try{return JSON.parse(l)}catch{return null}}).filter(Boolean);
+
+  // Group by month
+  const byMonth={};
+  const byType={};
+  records.forEach(r=>{
+    const m=(r.transaction_date||'').slice(0,7);
+    if(m){byMonth[m]=(byMonth[m]||0)+(r.total_amount||0)}
+    const t=r.document_type||'其他';
+    byType[t]=(byType[t]||0)+(r.total_amount||0);
+  });
+
+  // Flag risks
+  const risks=records.map(r=>{
+    const reasons=[];
+    const amt=r.total_amount||0;
+    if(amt>3000) reasons.push(`單筆高金額 NT$${amt.toLocaleString()}`);
+    if(r.confidence==='medium'||r.confidence==='low') reasons.push(`信心度 ${r.confidence}`);
+    // Check duplicate seller within 30 days (simplified: same seller same month)
+    const sameSellerCount=records.filter(x=>x.seller_tax_id===r.seller_tax_id&&x.voucher_id!==r.voucher_id).length;
+    if(sameSellerCount>=3) reasons.push(`供應商集中（同統編 ${sameSellerCount+1} 筆）`);
+    const risk=reasons.length>=2?'高':reasons.length===1?'中':'';
+    return {...r, reasons, risk};
+  }).filter(r=>r.risk);
+
+  STATE.data.audit={records, byMonth, byType, risks, fileName:file.name};
+  STATE.auditRisks=risks;
+  document.getElementById('btn-audit').disabled=false;
+}
+
+// ══════════════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════════════
+function renderAll(){
+  if(STATE.data.finance) renderFinance();
+  if(STATE.data.profit)  renderProfit();
+  if(STATE.data.work)    renderWork();
+  if(STATE.data.audit)   renderAudit();
+  document.getElementById('btn-sim').disabled=false;
+  updateToolSim();
+  renderSummary();
+  document.getElementById('btn-summary').disabled=false;
+
+  // Auto-navigate to first available tab
+  const first=['finance','profit','work','audit'].find(t=>STATE.data[t]);
+  if(first){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('page-'+first).classList.add('active');
+    document.getElementById('btn-'+first).classList.add('active');
+  }
+}
+
+// ══════════════════════════════════════════
+// RENDER FINANCE
+// ══════════════════════════════════════════
+function renderFinance(){
+  const {found, ratios, fileName}=STATE.data.finance;
+  document.getElementById('finance-source').textContent='資料來源：'+fileName;
+
+  // KPI
+  const kpiData=[
+    {label:'銷貨淨額',val:found.revenue?fmtW(found.revenue)+'萬元':'—',unit:'',cls:'blue',badge:'info',badgeText:'主要收入'},
+    {label:'毛利率',val:found.grossMargin?fmtPct(found.grossMargin):'—',unit:'',cls:'green',badge:assessRatio('grossMargin',found.grossMargin),badgeText:assessText('grossMargin',found.grossMargin)},
+    {label:'速動比率',val:found.quickRatio||'—',unit:'',cls:found.quickRatio&&found.quickRatio<1?'orange':'green',badge:assessRatio('quickRatio',found.quickRatio),badgeText:assessText('quickRatio',found.quickRatio)},
+    {label:'應收款收現日數',val:found.receivableDays?found.receivableDays+'天':'—',unit:'',cls:found.receivableDays&&found.receivableDays>70?'orange':'green',badge:assessRatio('receivableDays',found.receivableDays),badgeText:assessText('receivableDays',found.receivableDays)},
+  ];
+  document.getElementById('finance-kpi').innerHTML=kpiData.map(k=>`
+    <div class="kpi ${k.cls}">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-unit">${k.unit}</div>
+      <div class="kpi-badge ${k.badge}">${k.badgeText}</div>
+    </div>`).join('');
+
+  // Table
+  const tbody=document.getElementById('finance-table');
+  tbody.innerHTML=ratios.slice(0,20).map(r=>`
+    <tr><td>${r.label}</td><td class="num">${r.value}</td><td style="font-size:12px;color:var(--text2)">${interpretRatio(r.label,r.value)}</td></tr>`).join('');
+
+  // Chart
+  const labels=['毛利率','純益率','ROA','ROE'].map((l,i)=>l);
+  const vals=[found.grossMargin, found.netMargin, found.roa, found.roe].map(v=>parseFloat(String(v||0).replace(/[%,]/g,''))||0);
+  if(canUseCharts()){
+    if(charts.finance) charts.finance.destroy();
+    const ctx=document.getElementById('finance-chart').getContext('2d');
+    charts.finance=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'%',data:vals,backgroundColor:['#16a34a','#2563eb','#7c3aed','#ea580c'],borderRadius:6}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'}}}}});
+  }
+}
+
+function assessRatio(key,v){
+  if(v==null) return 'info';
+  const n=parseFloat(v);
+  const thresholds={quickRatio:{ok:1.2,warn:1.0},grossMargin:{ok:25,warn:15},receivableDays:{ok:60,warn:75},currentRatio:{ok:1.5,warn:1.0}};
+  const t=thresholds[key];
+  if(!t) return 'info';
+  if(key==='receivableDays'||key==='debtRatio'){
+    if(n<=t.ok) return 'ok'; if(n<=t.warn) return 'warn'; return 'bad';
+  }
+  if(n>=t.ok) return 'ok'; if(n>=t.warn) return 'warn'; return 'bad';
+}
+function assessText(key,v){
+  const r=assessRatio(key,v);
+  return r==='ok'?'正常':r==='warn'?'⚠ 偏低/偏高':'🔴 風險';
+}
+function interpretRatio(label,value){
+  const v=parseFloat(String(value).replace(/[%,]/g,''));
+  if(label.includes('毛利率')) return v>25?'獲利能力良好':v>15?'中等':'偏低';
+  if(label.includes('速動')) return v>1.2?'流動性充足':v>1?'尚可':'⚠ 需關注';
+  if(label.includes('收現')) return v<60?'收款效率佳':v<75?'尚可':'⚠ 偏長';
+  if(label.includes('利息保障')) return v>5?'財務安全':'⚠ 偏低';
+  return '';
+}
+function fmtW(v){return Math.round(v/10).toLocaleString()}
+function fmtPct(v){const n=parseFloat(String(v).replace(/[%,]/g,''));return isNaN(n)?v:n.toFixed(1)+'%'}
+function fmtN(v){return Number(v).toLocaleString()}
+
+// Finance query
+function queryFinance(){
+  const q=(document.getElementById('finance-query').value||'').toLowerCase();
+  const f=STATE.data.finance?.found||{};
+  let ans='';
+
+  if(q.includes('速動')){
+    const v=f.quickRatio;
+    ans=v?`速動比率為 ${v}，${parseFloat(v)<1?'⚠ 低於 1.0，即時流動性不足，建議檢視短期負債結構。':'大於 1.0，流動性尚可。'}`:'未找到速動比率資料。';
+  } else if(q.includes('毛利')){
+    const v=f.grossMargin;
+    ans=v?`毛利率為 ${fmtPct(v)}，${parseFloat(v)>25?'獲利能力良好。':'請搭配毛利分析模組了解各品類細節。'}`:'未找到毛利率資料。';
+  } else if(q.includes('應收')||q.includes('收現')){
+    const v=f.receivableDays;
+    ans=v?`應收款項收現日數為 ${v} 天，${parseFloat(v)>75?'⚠ 偏長，建議加強催收流程，目標縮短至 60 天以內。':'尚在合理範圍。'}`:'未找到應收款資料。';
+  } else if(q.includes('負債')){
+    const v=f.debtRatio;
+    ans=v?`負債占資產比率為 ${fmtPct(v)}，${parseFloat(v)<50?'財務槓桿偏低，資本結構健康。':'需留意財務風險。'}`:'未找到負債比率資料。';
+  } else if(q.includes('roe')||q.includes('股東')){
+    const v=f.roe;
+    ans=v?`股東權益報酬率（ROE）為 ${fmtPct(v)}，${parseFloat(v)>12?'股東投資報酬表現良好。':'低於 12%，建議提升資產運用效率。'}`:'未找到 ROE 資料。';
+  } else {
+    ans=`依目前財務資料：毛利率 ${fmtPct(f.grossMargin)||'—'}，速動比率 ${f.quickRatio||'—'}，應收款項收現 ${f.receivableDays||'—'} 天，ROE ${fmtPct(f.roe)||'—'}。請輸入更具體的問題（如：速動比率、毛利率、應收款項）。`;
+  }
+  document.getElementById('finance-answer').textContent=ans;
+}
+
+// ══════════════════════════════════════════
+// RENDER PROFIT
+// ══════════════════════════════════════════
+function renderProfit(){
+  const {cats, fileName}=STATE.data.profit;
+  document.getElementById('profit-source').textContent='資料來源：'+fileName;
+
+  const neg=cats.filter(c=>c.gp<0);
+  const low=cats.filter(c=>c.gp>=0&&(c.gp/c.revenue*100)<10);
+  const totalRev=cats.reduce((s,c)=>s+c.revenue,0);
+  const totalGP=cats.reduce((s,c)=>s+c.gp,0);
+
+  document.getElementById('profit-kpi').innerHTML=`
+    <div class="kpi blue"><div class="kpi-label">品類數</div><div class="kpi-val">${cats.length}</div><div class="kpi-unit">個分析品類</div><div class="kpi-badge info">已解析</div></div>
+    <div class="kpi green"><div class="kpi-label">整體毛利率</div><div class="kpi-val">${(totalGP/totalRev*100).toFixed(1)}%</div><div class="kpi-unit">全品類加總</div><div class="kpi-badge ok">計算完成</div></div>
+    <div class="kpi orange"><div class="kpi-label">低毛利品類</div><div class="kpi-val">${low.length}</div><div class="kpi-unit">毛利率 &lt;10%</div><div class="kpi-badge ${low.length>0?'warn':'ok'}">${low.length>0?'⚠ 需關注':'無'}</div></div>
+    <div class="kpi red"><div class="kpi-label">負毛利品類</div><div class="kpi-val">${neg.length}</div><div class="kpi-unit">成本超過銷售額</div><div class="kpi-badge ${neg.length>0?'bad':'ok'}">${neg.length>0?'🔴 立即處理':'無'}</div></div>`;
+
+  document.getElementById('profit-count').textContent=`（${cats.length} 個品類）`;
+
+  // Bar chart
+  const colors=cats.map(c=>c.gp<0?'#dc2626':c.gp/c.revenue<0.1?'#ea580c':'#2563eb');
+  if(canUseCharts()){
+    if(charts.profit) charts.profit.destroy();
+    charts.profit=new Chart(document.getElementById('profit-chart').getContext('2d'),{
+      type:'bar',
+      data:{labels:cats.map(c=>c.name),datasets:[{label:'毛利率%',data:cats.map(c=>+(c.gp/c.revenue*100).toFixed(1)),backgroundColor:colors,borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+'%'}}},
+        scales:{x:{ticks:{callback:v=>v+'%'}}}}});
+
+    // Bubble chart (revenue vs gp)
+    if(charts.profitBubble) charts.profitBubble.destroy();
+    charts.profitBubble=new Chart(document.getElementById('profit-bubble').getContext('2d'),{
+      type:'bubble',
+      data:{datasets:[{label:'品類',data:cats.map(c=>({x:c.revenue/1000,y:(c.gp/c.revenue*100),r:Math.max(5,Math.sqrt(Math.abs(c.gp)/5000)),label:c.name})),
+        backgroundColor:colors.map(c=>c+'88')}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const d=ctx.raw;return `${d.label} 銷貨:${fmtN(d.x)}萬 毛利率:${d.y.toFixed(1)}%`}}}},
+        scales:{x:{title:{display:true,text:'銷貨淨額（萬元）'}},y:{title:{display:true,text:'毛利率(%)'},ticks:{callback:v=>v+'%'}}}}});
+  }
+
+  // Table
+  const tbody=document.getElementById('profit-table');
+  tbody.innerHTML=cats.map((c,i)=>{
+    const gpm=(c.gp/c.revenue*100);
+    const risk=c.gp<0?'high':gpm<10?'mid':gpm<20?'low':'ok';
+    const riskText=c.gp<0?'負毛利':gpm<10?'低毛利':gpm<20?'偏低':'正常';
+    const suggest=c.gp<0?'立即檢討定價或成本，評估停產':gpm<5?'考慮縮減規模或提高售價':gpm<15?'建議優化成本結構':'維持現狀';
+    return `<tr>
+      <td>${i+1}</td><td>${c.name}</td>
+      <td class="num">${fmtN(Math.round(c.revenue/10))}</td>
+      <td class="num">${fmtN(Math.round(c.cost/10))}</td>
+      <td class="num" style="color:${c.gp<0?'var(--red)':'var(--text)'}">${fmtN(Math.round(c.gp/10))}</td>
+      <td class="num" style="color:${c.gp<0?'var(--red)':gpm<10?'var(--orange)':'inherit'}">${gpm.toFixed(1)}%</td>
+      <td><span class="risk-tag ${risk}">${riskText}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${suggest}</td>
+    </tr>`;}).join('');
+}
+
+// ══════════════════════════════════════════
+// RENDER WORK
+// ══════════════════════════════════════════
+function renderWork(){
+  const {days, fileName}=STATE.data.work;
+  document.getElementById('work-source').textContent='資料來源：'+fileName;
+
+  const totalGood=days.reduce((s,d)=>s+d.good,0);
+  const totalScrap=days.reduce((s,d)=>s+d.scrap,0);
+  const overallRate=totalScrap/(totalGood+totalScrap)*100;
+  const highDays=days.filter(d=>(d.scrap/(d.good+d.scrap))>0.01).length;
+
+  document.getElementById('work-kpi').innerHTML=`
+    <div class="kpi blue"><div class="kpi-label">工作天數</div><div class="kpi-val">${days.length}</div><div class="kpi-unit">天</div><div class="kpi-badge info">已解析</div></div>
+    <div class="kpi green"><div class="kpi-label">累計良品數</div><div class="kpi-val">${fmtN(totalGood)}</div><div class="kpi-unit">件</div><div class="kpi-badge ok">合計</div></div>
+    <div class="kpi orange"><div class="kpi-label">整體報廢率</div><div class="kpi-val">${overallRate.toFixed(2)}%</div><div class="kpi-unit">累計</div><div class="kpi-badge ${overallRate>1?'bad':overallRate>0.5?'warn':'ok'}">${overallRate>1?'🔴 過高':overallRate>0.5?'⚠ 注意':'正常'}</div></div>
+    <div class="kpi red"><div class="kpi-label">高風險日數</div><div class="kpi-val">${highDays}</div><div class="kpi-unit">天（報廢率 &gt;1%）</div><div class="kpi-badge ${highDays>0?'bad':'ok'}">${highDays>0?'🔴 需追蹤':'無'}</div></div>`;
+
+  document.getElementById('work-count').textContent=`（${days.length} 個工作日）`;
+
+  const labels=days.map(d=>d.date);
+  const scrapRates=days.map(d=>+(d.scrap/(d.good+d.scrap)*100).toFixed(2));
+
+  if(canUseCharts()){
+    if(charts.work) charts.work.destroy();
+    charts.work=new Chart(document.getElementById('work-chart').getContext('2d'),{
+      type:'bar',
+      data:{labels,datasets:[
+        {label:'良品數',data:days.map(d=>d.good),backgroundColor:'#2563eb55',borderColor:'#2563eb',borderWidth:1,yAxisID:'y'},
+        {label:'報廢×10',data:days.map(d=>d.scrap*10),backgroundColor:'#ea580c55',borderColor:'#ea580c',borderWidth:1,yAxisID:'y'}]},
+      options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmtN(v)}}},plugins:{legend:{labels:{font:{size:11}}}}}});
+
+    if(charts.scrap) charts.scrap.destroy();
+    charts.scrap=new Chart(document.getElementById('scrap-chart').getContext('2d'),{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'報廢率(%)',data:scrapRates,borderColor:'#ea580c',backgroundColor:'#ea580c22',tension:.3,pointRadius:4,fill:true},
+        {label:'1%警戒線',data:days.map(()=>1),borderColor:'#dc2626',borderDash:[6,3],pointRadius:0,borderWidth:1.5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'%'}}},
+        plugins:{legend:{labels:{font:{size:11}}}}}});
+  }
+
+  const tbody=document.getElementById('work-table');
+  tbody.innerHTML=days.map(d=>{
+    const rate=d.scrap/(d.good+d.scrap)*100;
+    const risk=rate>1?'high':rate>0.5?'mid':rate>0?'low':'ok';
+    const riskText=rate>1?'高風險':rate>0.5?'中風險':rate>0?'低風險':'無報廢';
+    const note=rate>1?`報廢率 ${rate.toFixed(2)}%，超過警戒線，建議追查產線原因`:rate>0.5?`報廢率偏高，需觀察後續趨勢`:``;
+    return `<tr>
+      <td>${d.date}</td>
+      <td class="num">${fmtN(d.good)}</td>
+      <td class="num">${fmtN(d.scrap)}</td>
+      <td class="num">${d.orders||'—'}</td>
+      <td class="num" style="color:${rate>1?'var(--red)':rate>0.5?'var(--orange)':'inherit'}">${rate.toFixed(2)}%</td>
+      <td><span class="risk-tag ${risk}">${riskText}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${note}</td>
+    </tr>`;}).join('');
+}
+
+// ══════════════════════════════════════════
+// RENDER AUDIT
+// ══════════════════════════════════════════
+function renderAudit(){
+  const {records, byMonth, byType, risks, fileName}=STATE.data.audit;
+  document.getElementById('audit-source').textContent='資料來源：'+fileName;
+
+  const total=records.reduce((s,r)=>s+(r.total_amount||0),0);
+  const highConf=records.filter(r=>r.confidence==='high').length;
+  const highRisk=risks.filter(r=>r.risk==='高').length;
+
+  document.getElementById('audit-kpi').innerHTML=`
+    <div class="kpi blue"><div class="kpi-label">已驗證憑證</div><div class="kpi-val">${records.length}</div><div class="kpi-unit">筆</div><div class="kpi-badge info">已解析</div></div>
+    <div class="kpi green"><div class="kpi-label">費用總額</div><div class="kpi-val">${(total/10000).toFixed(1)}萬</div><div class="kpi-unit">NTD 含稅</div><div class="kpi-badge ok">計算完成</div></div>
+    <div class="kpi orange"><div class="kpi-label">稽核風險紀錄</div><div class="kpi-val">${risks.length}</div><div class="kpi-unit">筆需關注</div><div class="kpi-badge ${risks.length>0?'warn':'ok'}">${risks.length}筆</div></div>
+    <div class="kpi red"><div class="kpi-label">高風險紀錄</div><div class="kpi-val">${highRisk}</div><div class="kpi-unit">筆需優先處理</div><div class="kpi-badge ${highRisk>0?'bad':'ok'}">${highRisk>0?'🔴 需覆核':'無'}</div></div>`;
+
+  // Monthly chart
+  const months=Object.keys(byMonth).sort();
+  if(canUseCharts()){
+    if(charts.auditMonth) charts.auditMonth.destroy();
+    charts.auditMonth=new Chart(document.getElementById('audit-month-chart').getContext('2d'),{
+      type:'bar',
+      data:{labels:months.map(m=>m.slice(5)+'月'),datasets:[{label:'費用(NTD)',data:months.map(m=>byMonth[m]),backgroundColor:'#2563eb88',borderRadius:6}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}}}}});
+
+    // Type donut
+    const typeLabels=Object.keys(byType);
+    const typeVals=Object.values(byType);
+    if(charts.auditType) charts.auditType.destroy();
+    charts.auditType=new Chart(document.getElementById('audit-type-chart').getContext('2d'),{
+      type:'doughnut',
+      data:{labels:typeLabels,datasets:[{data:typeVals,backgroundColor:['#2563eb','#16a34a','#ea580c','#7c3aed','#0891b2','#ca8a04','#dc2626','#64748b','#a16207','#b45309'],borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:4}},tooltip:{callbacks:{label:c=>c.label+': NT$'+c.raw.toLocaleString()+'（'+(c.raw/total*100).toFixed(1)+'%）'}}}}});
+  }
+
+  renderAuditTable();
+}
+
+function renderAuditTable(){
+  if(!STATE.data.audit) return;
+  const filter=document.getElementById('audit-filter').value;
+  const risks=STATE.auditRisks.filter(r=>filter==='all'||r.risk===filter);
+  document.getElementById('audit-risk-count').textContent=`（${risks.length} 筆）`;
+
+  const tbody=document.getElementById('audit-table');
+  tbody.innerHTML=risks.map(r=>`
+    <tr>
+      <td><code style="font-size:11px">${r.voucher_id}</code></td>
+      <td>${r.transaction_date||'—'}</td>
+      <td>${r.document_type||'—'}</td>
+      <td style="font-size:12px">${(r.items||'').slice(0,20)}${(r.items||'').length>20?'…':''}</td>
+      <td class="num">NT$${fmtN(r.total_amount||0)}</td>
+      <td><span class="conf-badge ${r.confidence}">${r.confidence}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${r.reasons.join(' / ')}</td>
+      <td><span class="risk-tag ${r.risk==='高'?'high':r.risk==='中'?'mid':'low'}">${r.risk}風險</span></td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════
+// RENDER SUMMARY
+// ══════════════════════════════════════════
+function renderSummary(){
+  const blocks=[];
+  const recs=[];
+  const irLines=[];
+
+  if(STATE.data.finance){
+    const f=STATE.data.finance.found;
+    const qr=parseFloat(f.quickRatio||0);
+    const rd=parseFloat(f.receivableDays||0);
+    blocks.push({title:'FINANCIAL PERFORMANCE',content:`銷貨淨額 ${fmtW(f.revenue||0)} 萬元，毛利率 ${fmtPct(f.grossMargin)}，純益率 ${fmtPct(f.netMargin)}，ROE ${fmtPct(f.roe)}，利息保障倍數 ${f.interestCoverage||'—'}x。財務槓桿健康，負債比率 ${fmtPct(f.debtRatio)}。`});
+    if(qr>0&&qr<1) recs.push(`速動比率 ${qr} 偏低（目標 >1.0），建議縮減非流動資產或提高短期週轉能力`);
+    if(rd>75) recs.push(`應收款項收現日數 ${rd} 天偏長，建議強化催收，目標縮短至 60 天以內`);
+    irLines.push(`財務表現：115Q1 銷貨淨額 ${fmtW(f.revenue||0)} 萬元，毛利率 ${fmtPct(f.grossMargin)}，稅後純益率 ${fmtPct(f.netMargin)}。財務結構穩健，負債比率 ${fmtPct(f.debtRatio)}，利息保障倍數 ${f.interestCoverage||'—'}x。`);
+  }
+
+  if(STATE.data.profit){
+    const cats=STATE.data.profit.cats;
+    const neg=cats.filter(c=>c.gp<0);
+    const totalRev=cats.reduce((s,c)=>s+c.revenue,0);
+    const totalGP=cats.reduce((s,c)=>s+c.gp,0);
+    const best=cats[0];
+    blocks.push({title:'GROSS PROFIT ANALYSIS',content:`${cats.length} 個品類，整體毛利率 ${(totalGP/totalRev*100).toFixed(1)}%。最高貢獻品類：${best?.name}（毛利率 ${best?(best.gp/best.revenue*100).toFixed(1)+'%':'—'}）。${neg.length>0?`⚠ ${neg.map(c=>c.name).join('、')} 出現負毛利，需立即處理。`:''}`});
+    neg.forEach(c=>recs.push(`${c.name}品類出現負毛利（${(c.gp/c.revenue*100).toFixed(1)}%），建議立即進行定價重審或停產評估`));
+    irLines.push(`毛利管理：整體毛利率 ${(totalGP/totalRev*100).toFixed(1)}%，${neg.length>0?`惟 ${neg.map(c=>c.name).join('、')} 品類出現負毛利，已列入重點改善事項。`:`各品類毛利表現穩定。`}`);
+  }
+
+  if(STATE.data.work){
+    const days=STATE.data.work.days;
+    const tGood=days.reduce((s,d)=>s+d.good,0);
+    const tScrap=days.reduce((s,d)=>s+d.scrap,0);
+    const rate=(tScrap/(tGood+tScrap)*100).toFixed(2);
+    const highDays=days.filter(d=>(d.scrap/(d.good+d.scrap))>0.01);
+    blocks.push({title:'PRODUCTION RISK',content:`${days.length} 個工作日，累計良品 ${fmtN(tGood)} 件，整體報廢率 ${rate}%。${highDays.length>0?`⚠ ${highDays.map(d=>d.date).join('、')} 報廢率超過 1% 警戒線，需追查產線原因。`:''}`});
+    if(highDays.length>0) recs.push(`${highDays.map(d=>d.date).join('、')} 報廢率超過警戒線，建議進行產線品質追蹤與工單原因分析`);
+    irLines.push(`生產品質：報告期間整體報廢率 ${rate}%，${highDays.length>0?`其中 ${highDays.map(d=>d.date).join('、')} 出現異常，已啟動追蹤程序。`:`品質控制良好。`}`);
+  }
+
+  if(STATE.data.audit){
+    const {records,risks}=STATE.data.audit;
+    const total=records.reduce((s,r)=>s+(r.total_amount||0),0);
+    const highRisk=risks.filter(r=>r.risk==='高');
+    blocks.push({title:'EXPENSE AUDIT',content:`${records.length} 筆已驗證費用憑證，總計 NT$${(total/10000).toFixed(1)}萬元。${risks.length} 筆標記為稽核風險，其中 ${highRisk.length} 筆為高風險（高金額或供應商集中）。`});
+    if(highRisk.length>0) recs.push(`${highRisk.length} 筆費用憑證為高風險，建議財務主管優先覆核`);
+    irLines.push(`費用稽核：${records.length} 筆憑證資料已結構化，年度費用合計 NT$ ${fmtN(Math.round(total))}，${risks.length} 筆需人工覆核確認。`);
+  }
+
+  const grid=document.getElementById('summary-grid');
+  grid.innerHTML=blocks.map(b=>`
+    <div class="summary-block">
+      <h4>${b.title}</h4>
+      <p>${b.content}</p>
+    </div>`).join('');
+
+  const recsEl=document.getElementById('summary-recs');
+  recsEl.innerHTML=`<h4>改善建議</h4><ol>${recs.length>0?recs.map(r=>`<li>${r}</li>`).join(''):'<li>目前無重大風險建議，各項指標表現正常。</li>'}</ol>`;
+
+  document.getElementById('ir-draft').textContent=
+    '【法說會重點草稿】\n\n' +
+    irLines.join('\n\n') +
+    '\n\n【前景展望】\n公司將持續強化核心品類競爭力，推動費用控管數位化，並持續關注財務流動性與應收帳款管理，以確保持續穩健的財務表現。\n\n（本草稿由 AI 根據上傳資料生成，請財會主管確認後使用）';
+}
+
+function copySummary(){
+  const t=document.getElementById('ir-draft').textContent;
+  navigator.clipboard.writeText(t).then(()=>{
+    const btn=document.getElementById('copy-btn');
+    btn.textContent='✅ 已複製';
+    setTimeout(()=>btn.textContent='📋 複製摘要文字',2000);
+  });
+}
+
+// ══════════════════════════════════════════
+// SCENARIO SIMULATOR
+// ══════════════════════════════════════════
+function getSimBase(){
+  const base={...SIM_DEFAULT};
+
+  if(STATE.data.finance?.found){
+    const f=STATE.data.finance.found;
+    if(f.revenue) base.revenue=+f.revenue;
+    if(f.grossMargin) base.grossMargin=parseFloat(f.grossMargin)/100;
+    if(f.netMargin) base.netMargin=parseFloat(f.netMargin)/100;
+    if(f.quickRatio) base.quickRatio=parseFloat(f.quickRatio);
+    if(f.receivableDays) base.receivableDays=parseFloat(f.receivableDays);
+  }
+
+  if(STATE.data.profit?.cats?.length){
+    const cats=STATE.data.profit.cats;
+    const totalRev=cats.reduce((s,c)=>s+(+c.revenue||0),0);
+    const totalGP=cats.reduce((s,c)=>s+(+c.gp||0),0);
+    if(totalRev>0){
+      base.revenue=totalRev;
+      base.grossMargin=totalGP/totalRev;
+    }
+    base.negativeCats=cats.filter(c=>(+c.gp||0)<0).length;
+    base.lowMarginCats=cats.filter(c=>{
+      const rev=+c.revenue||0;
+      const m=rev?(+c.gp||0)/rev:0;
+      return m>=0&&m<0.1;
+    }).length;
+  }
+
+  if(STATE.data.work?.days?.length){
+    const days=STATE.data.work.days;
+    const good=days.reduce((s,d)=>s+(+d.good||0),0);
+    const scrap=days.reduce((s,d)=>s+(+d.scrap||0),0);
+    if(good+scrap>0) base.scrapRate=scrap/(good+scrap);
+  }
+
+  if(STATE.data.audit){
+    base.highAudit=(STATE.auditRisks||[]).filter(r=>r.risk==='高').length;
+  }
+
+  return base;
+}
+
+function simFmtWan(n){return Math.round(n/10).toLocaleString('zh-TW')}
+function simPct(n,d=1){return (n*100).toFixed(d)+'%'}
+
+function setSimLabel(id,pctVal,inverse=false){
+  const el=document.getElementById(id);
+  el.textContent=(pctVal>=0?'+':'')+(pctVal*100).toFixed(0)+'%';
+  const bad=inverse?pctVal<0:pctVal>0;
+  el.className='sim-slider-val '+(bad?'pos':pctVal!==0?'neg':'');
+}
+
+function setToolSimCard(prefix,val,base,isGood=true){
+  const d=val-base;
+  const dPct=base!==0?d/Math.abs(base):0;
+  document.getElementById('tool-a-'+prefix).textContent=simFmtWan(val);
+  const dEl=document.getElementById('tool-d-'+prefix);
+  const good=isGood?d>=0:d<=0;
+  dEl.textContent=(d>=0?'+':'')+simFmtWan(d)+' ('+(dPct>=0?'+':'')+(dPct*100).toFixed(1)+'%)';
+  dEl.className='sim-card-delta '+(Math.abs(d)<1?'zero':good?'good':'bad');
+}
+
+function updateToolSim(){
+  const needed=['tool-slider-labor','tool-slider-material','tool-slider-volume','tool-slider-scrap','tool-slider-audit'];
+  if(!needed.every(id=>document.getElementById(id))) return;
+
+  const laborPct=parseFloat(document.getElementById('tool-slider-labor').value)/100;
+  const materialPct=parseFloat(document.getElementById('tool-slider-material').value)/100;
+  const volumePct=parseFloat(document.getElementById('tool-slider-volume').value)/100;
+  const scrapPct=parseFloat(document.getElementById('tool-slider-scrap').value)/100;
+  const auditPct=parseFloat(document.getElementById('tool-slider-audit').value)/100;
+
+  setSimLabel('tool-lbl-labor',laborPct);
+  setSimLabel('tool-lbl-material',materialPct);
+  setSimLabel('tool-lbl-volume',volumePct,true);
+  setSimLabel('tool-lbl-scrap',scrapPct);
+  setSimLabel('tool-lbl-audit',auditPct);
+
+  const b=getSimBase();
+  const baseRevenue=b.revenue;
+  const baseGross=baseRevenue*b.grossMargin;
+  const baseCogs=baseRevenue-baseGross;
+  const baseSga=baseRevenue*b.sgaRatio;
+  const baseOp=baseGross-baseSga;
+  const basePreTax=baseRevenue*b.netMargin/(1-b.taxRate);
+  const baseNet=baseRevenue*b.netMargin;
+  const materialCost=baseCogs*b.materialRatio;
+  const laborCost=baseCogs*b.laborRatio;
+  const variableCost=baseCogs*b.variableCostRatio;
+
+  const revenueImpact=baseRevenue*volumePct;
+  const varCostImpact=variableCost*volumePct;
+  const laborImpact=laborCost*laborPct;
+  const materialImpact=materialCost*materialPct;
+  const pressureScrap=Math.max(0,volumePct)*0.004+Math.max(0,laborPct)*0.002;
+  const newScrapRate=Math.max(0,b.scrapRate*(1+scrapPct)+pressureScrap);
+  const scrapCostImpact=Math.max(0,(newScrapRate-b.scrapRate)*(baseRevenue+revenueImpact)*0.18);
+
+  const newRevenue=baseRevenue+revenueImpact;
+  const newCogs=baseCogs+varCostImpact+laborImpact+materialImpact+scrapCostImpact;
+  const newGross=newRevenue-newCogs;
+  const newGrossMargin=newRevenue>0?newGross/newRevenue:0;
+  const newSga=baseSga;
+  const newOp=newGross-newSga;
+  const newPreTax=basePreTax+(newOp-baseOp);
+  const newNet=newPreTax>0?newPreTax*(1-b.taxRate):newPreTax;
+
+  document.getElementById('tool-b-revenue').textContent='基準: '+simFmtWan(baseRevenue);
+  document.getElementById('tool-b-gross').textContent='基準: '+simFmtWan(baseGross);
+  document.getElementById('tool-b-op').textContent='基準: '+simFmtWan(baseOp);
+  document.getElementById('tool-b-gm').textContent='基準: '+simPct(b.grossMargin);
+
+  setToolSimCard('revenue',newRevenue,baseRevenue);
+  setToolSimCard('gross',newGross,baseGross);
+  setToolSimCard('op',newOp,baseOp);
+  document.getElementById('tool-a-gm').textContent=simPct(newGrossMargin);
+  const gmDelta=newGrossMargin-b.grossMargin;
+  const gmEl=document.getElementById('tool-d-gm');
+  gmEl.textContent=(gmDelta>=0?'+':'')+(gmDelta*100).toFixed(1)+'pp';
+  gmEl.className='sim-card-delta '+(Math.abs(gmDelta)<0.0001?'zero':gmDelta>=0?'good':'bad');
+  document.getElementById('tool-a-net').textContent=simFmtWan(newNet);
+  const netDelta=newNet-baseNet;
+  const netEl=document.getElementById('tool-d-net');
+  netEl.textContent=(netDelta>=0?'▲ 增加 ':'▼ 減少 ')+simFmtWan(Math.abs(netDelta))+' 萬元 ('+(netDelta/baseNet*100).toFixed(1)+'%)';
+  netEl.className='sim-card-delta '+(netDelta>=0?'good':'bad');
+
+  const expectedHighAudit=Math.max(0,Math.round(b.highAudit*(1+auditPct+Math.max(0,materialPct)*0.35+Math.max(0,volumePct)*0.25)));
+  let marginRisk='ok';
+  if(newGrossMargin<0.25||netDelta<-baseNet*0.15) marginRisk='high';
+  else if(newGrossMargin<0.30||netDelta<0) marginRisk='mid';
+  let scrapRisk='ok';
+  if(newScrapRate>0.01) scrapRisk='high';
+  else if(newScrapRate>0.005) scrapRisk='mid';
+  let auditRisk='ok';
+  if(expectedHighAudit>=4) auditRisk='high';
+  else if(expectedHighAudit>=2) auditRisk='mid';
+  let financeRisk='ok';
+  if((b.quickRatio>0&&b.quickRatio<1)||(b.receivableDays>75)) financeRisk='mid';
+  if((b.quickRatio>0&&b.quickRatio<0.8)&&(b.receivableDays>75)) financeRisk='high';
+
+  const score=[marginRisk,scrapRisk,auditRisk,financeRisk].reduce((s,r)=>s+(r==='high'?2:r==='mid'?1:0),0);
+  const level=score>=5?'high':score>=2?'mid':'ok';
+  const levelEl=document.getElementById('tool-risk-level');
+  levelEl.textContent=level==='high'?'高風險情境':level==='mid'?'中風險情境':'可控情境';
+  levelEl.className='sim-risk-level '+level;
+
+  setRiskText('tool-risk-margin',marginRisk,`預估毛利率 ${simPct(newGrossMargin)}；原始資料有 ${b.negativeCats} 個負毛利、${b.lowMarginCats} 個低毛利品類`);
+  setRiskText('tool-risk-scrap',scrapRisk,`基準 ${simPct(b.scrapRate,2)}；預估報廢損益影響 ${simFmtWan(scrapCostImpact)} 萬元`);
+  setRiskText('tool-risk-audit',auditRisk,`基準高風險 ${b.highAudit} 筆；稽核壓力 ${(auditPct*100).toFixed(0)}%`);
+  setRiskText('tool-risk-finance',financeRisk,`速動比率 ${b.quickRatio||'—'}；收現日數 ${b.receivableDays||'—'} 天`);
+
+  const actions=[];
+  if(marginRisk!=='ok') actions.push('毛利率或淨利下滑，建議優先檢查燈座、百貨、其他燈等低毛利品類。');
+  if(scrapRisk!=='ok') actions.push('報廢率接近或超過 1% 警戒線，建議追蹤 3/6、3/12 類似高報廢工單。');
+  if(auditRisk!=='ok') actions.push('費用稽核壓力升高，建議先覆核高金額、低信心度與供應商集中憑證。');
+  if(financeRisk!=='ok') actions.push('流動性指標偏緊，建議同步檢查應收帳款收現與短期償債能力。');
+  if(!actions.length) actions.push('目前情境風險可控，可維持例行監控並持續追蹤毛利品類。');
+  document.getElementById('tool-sim-actions').innerHTML=actions.map((a,i)=>`${i+1}. ${a}`).join('<br>');
+  document.getElementById('sim-base-note').textContent=`基準：銷貨淨額 ${simFmtWan(baseRevenue)} 萬元、毛利率 ${simPct(b.grossMargin)}、報廢率 ${simPct(b.scrapRate,2)}。`;
+}
+
+function setRiskText(id,risk,note){
+  const val=document.getElementById(id);
+  val.textContent=risk==='high'?'高':risk==='mid'?'中':'低';
+  val.style.color=risk==='high'?'#fca5a5':risk==='mid'?'#facc15':'#86efac';
+  document.getElementById(id+'-note').textContent=note;
+}
+
+function resetToolSim(){
+  document.getElementById('tool-slider-labor').value=10;
+  document.getElementById('tool-slider-material').value=15;
+  document.getElementById('tool-slider-volume').value=-5;
+  document.getElementById('tool-slider-scrap').value=20;
+  document.getElementById('tool-slider-audit').value=15;
+  updateToolSim();
+}
+
+// ══════════════════════════════════════════
+// CSV EXPORT
+// ══════════════════════════════════════════
+function exportCSV(type){
+  let rows=[], filename='';
+  if(type==='profit'&&STATE.data.profit){
+    filename='毛利分析.csv';
+    rows=[['品類','銷貨淨額','銷貨成本','毛利','毛利率(%)','風險等級']];
+    STATE.data.profit.cats.forEach(c=>{
+      const gpm=(c.gp/c.revenue*100).toFixed(1);
+      const risk=c.gp<0?'負毛利':gpm<10?'低毛利':gpm<20?'偏低':'正常';
+      rows.push([c.name,Math.round(c.revenue),Math.round(c.cost),Math.round(c.gp),gpm,risk]);
+    });
+  } else if(type==='work'&&STATE.data.work){
+    filename='報工風險清單.csv';
+    rows=[['日期','良品數','報廢數','工單數','報廢率(%)','風險等級']];
+    STATE.data.work.days.forEach(d=>{
+      const rate=(d.scrap/(d.good+d.scrap)*100).toFixed(2);
+      const risk=rate>1?'高風險':rate>0.5?'中風險':rate>0?'低風險':'正常';
+      rows.push([d.date,d.good,d.scrap,d.orders,rate,risk]);
+    });
+  } else if(type==='audit'&&STATE.data.audit){
+    filename='費用稽核風險清單.csv';
+    rows=[['憑證ID','交易日期','憑證類型','品項','金額','信心度','風險原因','風險等級']];
+    STATE.auditRisks.forEach(r=>{
+      rows.push([r.voucher_id,r.transaction_date,r.document_type,r.items,r.total_amount,r.confidence,r.reasons.join(' / '),r.risk+'風險']);
+    });
+  }
+  if(!rows.length) return;
+  const csv='﻿'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=filename;
+  a.click();
+}
+
+// ══════════════════════════════════════════
+// DEMO DATA
+// ══════════════════════════════════════════
+function loadDemoData(){
+  // Inject demo finance
+  STATE.data.finance={
+    ratios:[
+      {label:'銷貨淨額',value:'4,732,845'},{label:'毛利率',value:'33.5%'},
+      {label:'純益率',value:'15.5%'},{label:'速動比率',value:'0.70'},
+      {label:'流動比率',value:'1.30'},{label:'負債占資產比率',value:'36.9%'},
+      {label:'利息保障倍數',value:'15.2'},{label:'應收款項收現日數',value:'75.7'},
+      {label:'存貨週轉率',value:'1.56'},{label:'資產報酬率',value:'9.49%'},
+      {label:'股東權益報酬率',value:'14.13%'},
+    ],
+    found:{revenue:4732845,grossMargin:'33.5',netMargin:'15.5',quickRatio:'0.70',
+      currentRatio:'1.30',debtRatio:'36.9',interestCoverage:'15.2',
+      receivableDays:'75.7',inventoryTurn:'1.56',roa:'9.49',roe:'14.13'},
+    fileName:'帝寶115Q1財務比率(示範資料)'
+  };
+
+  // Demo profit
+  const demoCats=[
+    {name:'大燈',revenue:2160022,cost:1441846,gp:718176},
+    {name:'後燈',revenue:766809,cost:459688,gp:307121},
+    {name:'霧燈',revenue:133793,cost:77860,gp:55933},
+    {name:'前燈',revenue:65221,cost:36470,gp:28751},
+    {name:'角燈',revenue:64606,cost:38844,gp:25762},
+    {name:'倒車燈',revenue:53348,cost:32448,gp:20900},
+    {name:'邊燈',revenue:27329,cost:11889,gp:15440},
+    {name:'牌照燈',revenue:5669,cost:4895,gp:774},
+    {name:'原物料',revenue:4585,cost:4155,gp:430},
+    {name:'其他燈',revenue:1689,cost:1597,gp:92},
+    {name:'百貨',revenue:30069,cost:29892,gp:177},
+    {name:'燈座',revenue:12251,cost:14074,gp:-1823},
+  ].sort((a,b)=>b.gp-a.gp);
+  STATE.data.profit={cats:demoCats,fileName:'銷貨毛利115Q1(示範資料)'};
+  STATE.profitRows=demoCats;
+
+  // Demo work
+  const demoWork=[
+    {date:'3/2',good:23585,scrap:205,orders:87},{date:'3/3',good:3162,scrap:19,orders:20},
+    {date:'3/4',good:4915,scrap:25,orders:29},{date:'3/5',good:9225,scrap:82,orders:30},
+    {date:'3/6',good:5977,scrap:89,orders:33},{date:'3/9',good:5011,scrap:26,orders:31},
+    {date:'3/10',good:3475,scrap:19,orders:22},{date:'3/11',good:4969,scrap:11,orders:34},
+    {date:'3/12',good:8285,scrap:120,orders:43},{date:'3/13',good:5228,scrap:73,orders:35},
+    {date:'3/16',good:8672,scrap:78,orders:50},{date:'3/17',good:6776,scrap:2,orders:34},
+    {date:'3/18',good:5715,scrap:33,orders:31},{date:'3/19',good:5253,scrap:60,orders:29},
+    {date:'3/20',good:12546,scrap:27,orders:52},{date:'3/23',good:5063,scrap:0,orders:31},
+    {date:'3/24',good:9547,scrap:86,orders:49},{date:'3/25',good:12416,scrap:52,orders:42},
+  ];
+  STATE.data.work={days:demoWork,fileName:'加工報工2026.03(示範資料)'};
+  STATE.workRisks=demoWork.filter(d=>d.scrap/(d.good+d.scrap)>0.008);
+
+  // Demo audit
+  const demoRecords=[
+    {voucher_id:'2024-28',transaction_date:'2024-12-20',document_type:'電子發票',items:'運費',total_amount:5436,confidence:'high',seller_tax_id:'28483484'},
+    {voucher_id:'2024-16',transaction_date:'2024-01-25',document_type:'電子發票',items:'TP-LINK 網路設備',total_amount:4999,confidence:'high',seller_tax_id:'51623894'},
+    {voucher_id:'2024-30',transaction_date:'2024-11-20',document_type:'電子發票',items:'運費',total_amount:915,confidence:'high',seller_tax_id:'28483484'},
+    {voucher_id:'2024-8', transaction_date:'2024-01-10',document_type:'三聯式收銀機統一發票',items:'水',total_amount:53,confidence:'medium',seller_tax_id:'92848947'},
+    {voucher_id:'2024-2', transaction_date:'2024-12-17',document_type:'三聯式收銀機統一發票',items:'手續費',total_amount:210,confidence:'high',seller_tax_id:'20966439'},
+    {voucher_id:'2024-15',transaction_date:'2024-08-14',document_type:'電子發票',items:'九五無鉛',total_amount:1136,confidence:'high',seller_tax_id:'81512608'},
+    {voucher_id:'2024-19',transaction_date:'2024-08-07',document_type:'電子發票',items:'95Plus無鉛',total_amount:1121,confidence:'high',seller_tax_id:'70507614'},
+    {voucher_id:'2024-20',transaction_date:'2024-08-19',document_type:'電子發票',items:'95Plus無鉛',total_amount:1243,confidence:'high',seller_tax_id:'70507614'},
+    {voucher_id:'2024-22',transaction_date:'2024-08-11',document_type:'電子發票',items:'95Plus無鉛',total_amount:1130,confidence:'high',seller_tax_id:'70507614'},
+    {voucher_id:'2024-36',transaction_date:'2024-01-23',document_type:'電子發票',items:'餐飲',total_amount:1160,confidence:'high',seller_tax_id:'83693252'},
+  ];
+  const byMonth={},byType={};
+  demoRecords.forEach(r=>{
+    const m=r.transaction_date.slice(0,7);
+    byMonth[m]=(byMonth[m]||0)+r.total_amount;
+    const t=r.document_type;
+    byType[t]=(byType[t]||0)+r.total_amount;
+  });
+  const demoRisks=demoRecords.map(r=>{
+    const reasons=[];
+    if(r.total_amount>3000) reasons.push(`高金額 NT$${r.total_amount.toLocaleString()}`);
+    if(r.confidence!=='high') reasons.push(`信心度 ${r.confidence}`);
+    const sameCount=demoRecords.filter(x=>x.seller_tax_id===r.seller_tax_id&&x.voucher_id!==r.voucher_id).length;
+    if(sameCount>=2) reasons.push(`供應商集中（同統編 ${sameCount+1} 筆）`);
+    const risk=reasons.length>=2?'高':reasons.length===1?'中':'';
+    return {...r, reasons, risk};
+  }).filter(r=>r.risk);
+  STATE.data.audit={records:demoRecords,byMonth,byType,risks:demoRisks,fileName:'invoice_auto憑證(示範資料)'};
+  STATE.auditRisks=demoRisks;
+
+  // Update UI
+  ['finance','profit','work','audit'].forEach(k=>{
+    document.getElementById('btn-'+k).disabled=false;
+    document.getElementById('slot-'+k).classList.add('loaded');
+    document.getElementById('file-'+k).textContent='示範資料已載入';
+  });
+
+  document.getElementById('progress-msg').textContent='示範資料載入完成，渲染分析結果…';
+  document.getElementById('status-badge').textContent='示範模式';
+  renderAll();
+  document.getElementById('progress-msg').textContent='示範資料分析完成 — 切換上方分頁查看結果';
+}
+</script>
+</body>
+</html>
